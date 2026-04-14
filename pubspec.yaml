@@ -1,0 +1,31 @@
+name: food_log
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Push notification lokal (muncul di luar app seperti WA)
+  flutter_local_notifications: ^18.0.1
+
+  # Database SQLite — simpan gula darah, obat, user
+  sqflite: ^2.4.2
+  path: ^1.9.0
+
+  # Simpan sesi login & preferensi user
+  shared_preferences: ^2.3.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

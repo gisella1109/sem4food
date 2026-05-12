@@ -1,44 +1,53 @@
-// lib/database/database_helper.dart
-
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'dart:typed_data';
 
 class DatabaseHelper {
-  static const _dbName = 'glucoguide.db';
-  static const _dbVersion = 3; // Upgrade version
+  // ==================== KONSTANTA ====================
+  static const String _dbName = 'glucoguide.db';
+  static const int _dbVersion = 3;
 
-  static const tableFoods = 'foods';
-  static const tableFoodLog = 'food_log';
-  static const tableGulaDarah = 'gula_darah';
-  static const tableGlucose = 'glucose';
-  static const tableMedication = 'medication';
-  static const tableUser = 'user';
+  // Nama tabel
+  static const String tableFoods = 'foods';
+  static const String tableFoodLog = 'food_log';
+  static const String tableGulaDarah = 'gula_darah';
+  static const String tableGlucose = 'glucose';
+  static const String tableMedication = 'medication';
+  static const String tableUser = 'user';
 
   static Database? _db;
-  
+
+  // ==================== SINGLETON ====================
   DatabaseHelper._();
-  static final instance = DatabaseHelper._();
+  static final DatabaseHelper instance = DatabaseHelper._();
 
   factory DatabaseHelper() => instance;
 
+  // ==================== INISIALISASI DATABASE ====================
   Future<Database> get database async {
     _db ??= await _initDB();
     return _db!;
   }
 
-  Future<Database> _initDB() async {
-    final path = join(await getDatabasesPath(), _dbName);
-    return openDatabase(
-      path, 
-      version: _dbVersion,
-      onCreate: _onCreate, 
-      onUpgrade: _onUpgrade
-    );
+  
+Future<Database> _initDB() async {
+  if (kIsWeb) {
+    throw UnsupportedError("Database tidak support di Web");
   }
 
+  final path = join(await getDatabasesPath(), _dbName);
+  return await openDatabase(
+    path,
+    version: _dbVersion,
+    onCreate: _onCreate,
+    onUpgrade: _onUpgrade,
+  );
+}
+
+  // ==================== MEMBUAT TABEL ====================
   Future<void> _onCreate(Database db, int version) async {
-    // Tabel foods
+    // Tabel 1: foods (master data makanan)
     await db.execute('''
       CREATE TABLE $tableFoods (
         id               TEXT PRIMARY KEY,
@@ -56,7 +65,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // Tabel food_log
+    // Tabel 2: food_log (jurnal makanan harian)
     await db.execute('''
       CREATE TABLE $tableFoodLog (
         id           TEXT PRIMARY KEY,
@@ -69,7 +78,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // Tabel gula_darah
+    // Tabel 3: gula_darah
     await db.execute('''
       CREATE TABLE $tableGulaDarah (
         id          TEXT PRIMARY KEY,
@@ -80,7 +89,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // Tabel glucose (alternatif)
+    // Tabel 4: glucose (alternatif)
     await db.execute('''
       CREATE TABLE $tableGlucose (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,7 +100,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // Tabel medication
+    // Tabel 5: medication (pengingat obat)
     await db.execute('''
       CREATE TABLE $tableMedication (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -105,14 +114,14 @@ class DatabaseHelper {
       )
     ''');
 
-    // Tabel user
+    // Tabel 6: user
     await db.execute('''
       CREATE TABLE $tableUser (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nama TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
         password TEXT NOT NULL,
-        role TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'pasien',
         dibuat_pada TEXT NOT NULL
       )
     ''');
@@ -121,13 +130,12 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_log_tanggal ON $tableFoodLog (date(dicatat_pada))');
     await db.execute('CREATE INDEX idx_log_waktu ON $tableFoodLog (waktu_makan, date(dicatat_pada))');
 
-    // Seed data makanan dari jurnal
+    // Seed data awal
     await _seedAllFoods(db);
-    
-    // Seed default users
     await _seedDefaultUsers(db);
   }
 
+  // ==================== UPGRADE DATABASE ====================
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute("ALTER TABLE $tableUser ADD COLUMN role TEXT DEFAULT 'pasien'");
@@ -137,10 +145,11 @@ class DatabaseHelper {
     }
   }
 
+  // ==================== SEED DATA MAKANAN ====================
   Future<void> _seedAllFoods(Database db) async {
     final batch = db.batch();
-    
-    // ==================== MAKANAN POKOK ====================
+
+    // Makanan Pokok
     final makananPokok = [
       {'id': 'nasi_putih', 'nama': 'Nasi Putih', 'emoji': '🍚', 'kategori': 'makanan_pokok', 'kalori_100g': 130, 'karbo_100g': 28.2, 'protein_100g': 2.7, 'lemak_100g': 0.3, 'serat_100g': 0.4, 'gula_100g': 0.1, 'indeks_glikemik': 72},
       {'id': 'nasi_merah', 'nama': 'Nasi Merah', 'emoji': '🍚', 'kategori': 'makanan_pokok', 'kalori_100g': 111, 'karbo_100g': 23.0, 'protein_100g': 2.6, 'lemak_100g': 0.9, 'serat_100g': 1.8, 'gula_100g': 0.4, 'indeks_glikemik': 55},
@@ -152,12 +161,12 @@ class DatabaseHelper {
       {'id': 'mie', 'nama': 'Mie', 'emoji': '🍜', 'kategori': 'makanan_pokok', 'kalori_100g': 138, 'karbo_100g': 25.0, 'protein_100g': 4.5, 'lemak_100g': 2.0, 'serat_100g': 1.0, 'gula_100g': 0.5, 'indeks_glikemik': 55},
       {'id': 'bihun', 'nama': 'Bihun', 'emoji': '🍜', 'kategori': 'makanan_pokok', 'kalori_100g': 360, 'karbo_100g': 88.0, 'protein_100g': 1.0, 'lemak_100g': 0.5, 'serat_100g': 1.0, 'gula_100g': 0.0, 'indeks_glikemik': 58},
     ];
-    
+
     for (final f in makananPokok) {
       batch.insert(tableFoods, f, conflictAlgorithm: ConflictAlgorithm.ignore);
     }
 
-    // ==================== PROTEIN HEWANI ====================
+    // Protein Hewani
     final proteinHewani = [
       {'id': 'ayam_goreng', 'nama': 'Ayam Goreng', 'emoji': '🍗', 'kategori': 'protein', 'kalori_100g': 250, 'karbo_100g': 5.0, 'protein_100g': 25.0, 'lemak_100g': 15.0, 'serat_100g': 0, 'gula_100g': 0, 'indeks_glikemik': 0},
       {'id': 'ayam_bakar', 'nama': 'Ayam Bakar', 'emoji': '🍗', 'kategori': 'protein', 'kalori_100g': 200, 'karbo_100g': 2.0, 'protein_100g': 28.0, 'lemak_100g': 8.0, 'serat_100g': 0, 'gula_100g': 0, 'indeks_glikemik': 0},
@@ -168,12 +177,12 @@ class DatabaseHelper {
       {'id': 'telur', 'nama': 'Telur Ayam', 'emoji': '🥚', 'kategori': 'protein', 'kalori_100g': 155, 'karbo_100g': 1.1, 'protein_100g': 12.8, 'lemak_100g': 11.0, 'serat_100g': 0, 'gula_100g': 0, 'indeks_glikemik': 0},
       {'id': 'udang', 'nama': 'Udang', 'emoji': '🦐', 'kategori': 'protein', 'kalori_100g': 91, 'karbo_100g': 1.0, 'protein_100g': 21.0, 'lemak_100g': 1.0, 'serat_100g': 0, 'gula_100g': 0, 'indeks_glikemik': 0},
     ];
-    
+
     for (final f in proteinHewani) {
       batch.insert(tableFoods, f, conflictAlgorithm: ConflictAlgorithm.ignore);
     }
 
-    // ==================== PROTEIN NABATI ====================
+    // Protein Nabati
     final proteinNabati = [
       {'id': 'tempe', 'nama': 'Tempe', 'emoji': '🟫', 'kategori': 'protein', 'kalori_100g': 193, 'karbo_100g': 13.0, 'protein_100g': 20.0, 'lemak_100g': 9.0, 'serat_100g': 1.4, 'gula_100g': 0, 'indeks_glikemik': 30},
       {'id': 'tahu', 'nama': 'Tahu', 'emoji': '⬜', 'kategori': 'protein', 'kalori_100g': 76, 'karbo_100g': 1.9, 'protein_100g': 8.0, 'lemak_100g': 4.0, 'serat_100g': 0.3, 'gula_100g': 0, 'indeks_glikemik': 15},
@@ -181,12 +190,12 @@ class DatabaseHelper {
       {'id': 'tahu_goreng', 'nama': 'Tahu Goreng', 'emoji': '🟨', 'kategori': 'protein', 'kalori_100g': 115, 'karbo_100g': 5.0, 'protein_100g': 7.0, 'lemak_100g': 7.0, 'serat_100g': 0.5, 'gula_100g': 0, 'indeks_glikemik': 20},
       {'id': 'kacang_tanah', 'nama': 'Kacang Tanah', 'emoji': '🥜', 'kategori': 'protein', 'kalori_100g': 567, 'karbo_100g': 16.0, 'protein_100g': 25.0, 'lemak_100g': 49.0, 'serat_100g': 8.5, 'gula_100g': 4.0, 'indeks_glikemik': 14},
     ];
-    
+
     for (final f in proteinNabati) {
       batch.insert(tableFoods, f, conflictAlgorithm: ConflictAlgorithm.ignore);
     }
 
-    // ==================== SAYURAN ====================
+    // Sayuran
     final sayuran = [
       {'id': 'bayam', 'nama': 'Bayam', 'emoji': '🥬', 'kategori': 'sayuran', 'kalori_100g': 23, 'karbo_100g': 3.6, 'protein_100g': 2.9, 'lemak_100g': 0.4, 'serat_100g': 2.2, 'gula_100g': 0.4, 'indeks_glikemik': 15},
       {'id': 'kangkung', 'nama': 'Kangkung', 'emoji': '🥬', 'kategori': 'sayuran', 'kalori_100g': 19, 'karbo_100g': 3.1, 'protein_100g': 2.6, 'lemak_100g': 0.3, 'serat_100g': 2.1, 'gula_100g': 0.2, 'indeks_glikemik': 15},
@@ -196,12 +205,12 @@ class DatabaseHelper {
       {'id': 'kacang_panjang', 'nama': 'Kacang Panjang', 'emoji': '🟢', 'kategori': 'sayuran', 'kalori_100g': 47, 'karbo_100g': 8.0, 'protein_100g': 2.1, 'lemak_100g': 0.5, 'serat_100g': 2.0, 'gula_100g': 1.5, 'indeks_glikemik': 20},
       {'id': 'terong', 'nama': 'Terong', 'emoji': '🍆', 'kategori': 'sayuran', 'kalori_100g': 25, 'karbo_100g': 6.0, 'protein_100g': 1.0, 'lemak_100g': 0.2, 'serat_100g': 3.0, 'gula_100g': 3.5, 'indeks_glikemik': 15},
     ];
-    
+
     for (final f in sayuran) {
       batch.insert(tableFoods, f, conflictAlgorithm: ConflictAlgorithm.ignore);
     }
 
-    // ==================== BUAH ====================
+    // Buah
     final buah = [
       {'id': 'pisang', 'nama': 'Pisang', 'emoji': '🍌', 'kategori': 'buah', 'kalori_100g': 89, 'karbo_100g': 23.0, 'protein_100g': 1.1, 'lemak_100g': 0.3, 'serat_100g': 2.6, 'gula_100g': 12.2, 'indeks_glikemik': 51},
       {'id': 'apel', 'nama': 'Apel', 'emoji': '🍎', 'kategori': 'buah', 'kalori_100g': 52, 'karbo_100g': 14.0, 'protein_100g': 0.3, 'lemak_100g': 0.2, 'serat_100g': 2.4, 'gula_100g': 10.4, 'indeks_glikemik': 36},
@@ -211,12 +220,12 @@ class DatabaseHelper {
       {'id': 'pepaya', 'nama': 'Pepaya', 'emoji': '🍈', 'kategori': 'buah', 'kalori_100g': 43, 'karbo_100g': 11.0, 'protein_100g': 0.5, 'lemak_100g': 0.1, 'serat_100g': 1.7, 'gula_100g': 8.0, 'indeks_glikemik': 60},
       {'id': 'alpukat', 'nama': 'Alpukat', 'emoji': '🥑', 'kategori': 'buah', 'kalori_100g': 160, 'karbo_100g': 9.0, 'protein_100g': 2.0, 'lemak_100g': 15.0, 'serat_100g': 7.0, 'gula_100g': 0.7, 'indeks_glikemik': 10},
     ];
-    
+
     for (final f in buah) {
       batch.insert(tableFoods, f, conflictAlgorithm: ConflictAlgorithm.ignore);
     }
 
-    // ==================== MAKANAN SIAP SAJI ====================
+    // Makanan Siap Saji / Masakan
     final makananSiapSaji = [
       {'id': 'nasi_goreng', 'nama': 'Nasi Goreng', 'emoji': '🍳', 'kategori': 'masakan', 'kalori_100g': 187, 'karbo_100g': 26.0, 'protein_100g': 5.7, 'lemak_100g': 7.0, 'serat_100g': 0.8, 'gula_100g': 1.2, 'indeks_glikemik': 70},
       {'id': 'mie_goreng', 'nama': 'Mie Goreng', 'emoji': '🍜', 'kategori': 'masakan', 'kalori_100g': 200, 'karbo_100g': 30.0, 'protein_100g': 6.0, 'lemak_100g': 7.0, 'serat_100g': 1.0, 'gula_100g': 2.0, 'indeks_glikemik': 73},
@@ -225,7 +234,7 @@ class DatabaseHelper {
       {'id': 'rendang', 'nama': 'Rendang', 'emoji': '🍖', 'kategori': 'masakan', 'kalori_100g': 193, 'karbo_100g': 6.2, 'protein_100g': 19.3, 'lemak_100g': 10.7, 'serat_100g': 0.5, 'gula_100g': 1.0, 'indeks_glikemik': 25},
       {'id': 'bakso', 'nama': 'Bakso', 'emoji': '🍡', 'kategori': 'masakan', 'kalori_100g': 86, 'karbo_100g': 5.2, 'protein_100g': 8.3, 'lemak_100g': 3.4, 'serat_100g': 0.2, 'gula_100g': 0.5, 'indeks_glikemik': 48},
     ];
-    
+
     for (final f in makananSiapSaji) {
       batch.insert(tableFoods, f, conflictAlgorithm: ConflictAlgorithm.ignore);
     }
@@ -233,26 +242,27 @@ class DatabaseHelper {
     await batch.commit(noResult: true);
   }
 
+  // ==================== SEED DEFAULT USERS ====================
   Future<void> _seedDefaultUsers(Database db) async {
     await db.insert(tableUser, {
       'nama': 'Admin',
       'email': 'admin@gmail.com',
-      'password': '123',
+      'password': 'admin130306.',
       'role': 'admin',
-      'dibuat_pada': DateTime.now().toString()
+      'dibuat_pada': DateTime.now().toString(),
     });
 
     await db.insert(tableUser, {
       'nama': 'User',
       'email': 'user@gmail.com',
-      'password': '123',
+      'password': 'Gi130306.',
       'role': 'pasien',
-      'dibuat_pada': DateTime.now().toString()
+      'dibuat_pada': DateTime.now().toString(),
     });
   }
 
-  // ==================== QUERY UNTUK TABLE FOODS ====================
-  
+  // ==================== QUERY TABLE FOODS ====================
+
   Future<List<Map<String, dynamic>>> getAllFoods() async {
     final db = await database;
     return await db.query(tableFoods, orderBy: 'nama ASC');
@@ -300,7 +310,7 @@ class DatabaseHelper {
     );
   }
 
-  // ==================== QUERY UNTUK TABLE FOOD_LOG ====================
+  // ==================== QUERY TABLE FOOD_LOG ====================
 
   Future<int> insertFoodLog(Map<String, dynamic> data) async {
     final db = await database;
@@ -318,7 +328,8 @@ class DatabaseHelper {
   Future<List<Map<String, dynamic>>> getFoodLogByDate(String date) async {
     final db = await database;
     return await db.rawQuery('''
-      SELECT l.*, f.nama, f.emoji, f.kalori_100g, f.karbo_100g, f.protein_100g, f.lemak_100g, f.indeks_glikemik
+      SELECT l.*, f.nama, f.emoji, f.kalori_100g, f.karbo_100g, 
+             f.protein_100g, f.lemak_100g, f.indeks_glikemik
       FROM $tableFoodLog l
       JOIN $tableFoods f ON l.food_id = f.id
       WHERE date(l.dicatat_pada) = ?
@@ -346,7 +357,7 @@ class DatabaseHelper {
     );
   }
 
-  // ==================== QUERY UNTUK TABLE GULA_DARAH ====================
+  // ==================== QUERY TABLE GULA_DARAH ====================
 
   Future<int> insertGulaDarah(Map<String, dynamic> data) async {
     final db = await database;
@@ -380,7 +391,7 @@ class DatabaseHelper {
     );
   }
 
-  // ==================== QUERY UNTUK TABLE GLUCOSE ====================
+  // ==================== QUERY TABLE GLUCOSE ====================
 
   Future<int> insertGlucose(Map<String, dynamic> data) async {
     final db = await database;
@@ -397,7 +408,7 @@ class DatabaseHelper {
     return await db.delete(tableGlucose, where: 'id = ?', whereArgs: [id]);
   }
 
-  // ==================== QUERY UNTUK TABLE MEDICATION ====================
+  // ==================== QUERY TABLE MEDICATION ====================
 
   Future<int> insertMedication(Map<String, dynamic> data) async {
     final db = await database;
@@ -414,7 +425,7 @@ class DatabaseHelper {
     return await db.delete(tableMedication, where: 'id = ?', whereArgs: [id]);
   }
 
-  // ==================== QUERY UNTUK TABLE USER ====================
+  // ==================== QUERY TABLE USER ====================
 
   Future<Map<String, dynamic>?> login(String email, String password) async {
     final db = await database;

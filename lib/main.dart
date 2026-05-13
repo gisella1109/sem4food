@@ -1,28 +1,33 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'pages/login_page.dart';
+import 'pages/intro_screen_page.dart';
 import 'services/notification_service.dart';
 import 'database/database_helper.dart';
 
 void main() async {
-  // Wajib sebelum init plugin dan async operations
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 🔥 Load environment variables (.env file)
-  await dotenv.load();
-  
-  // 🔥 Inisialisasi database
-  await DatabaseHelper.instance.database;
+  await dotenv.load(fileName: "assets/env/.env");
 
-  // Init push notification service
+  if (!kIsWeb) {
+    await DatabaseHelper.instance.database;
+  }
+
   await NotificationService().init();
 
-  runApp(const AplikasiKu());
+  // Cek apakah user sudah pernah lihat intro
+  final prefs = await SharedPreferences.getInstance();
+  final sudahLihatIntro = prefs.getBool('sudahLihatIntro') ?? false;
+
+  runApp(AplikasiKu(tampilkanIntro: !sudahLihatIntro));
 }
 
 class AplikasiKu extends StatelessWidget {
-  const AplikasiKu({super.key});
+  final bool tampilkanIntro;
+  const AplikasiKu({super.key, required this.tampilkanIntro});
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +40,7 @@ class AplikasiKu extends StatelessWidget {
           brightness: Brightness.light,
         ),
         useMaterial3: true,
-        fontFamily: 'Poppins', // Optional: jika pakai font custom
+        fontFamily: 'Poppins',
         appBarTheme: const AppBarTheme(
           elevation: 0,
           centerTitle: true,
@@ -43,7 +48,8 @@ class AplikasiKu extends StatelessWidget {
           foregroundColor: Color(0xFF1A1A2E),
         ),
       ),
-      home: const LoginPage(),
+      // Tampilkan IntroScreen hanya jika belum pernah lihat
+      home: tampilkanIntro ? const IntroScreen() : const LoginPage(),
     );
   }
 }

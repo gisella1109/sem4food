@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/glucose_store.dart';
 import '../models/glucose_entry.dart';
 import 'add_glucose_page.dart';
+import '../services/api_service.dart';
 
 class GlucoseHistoryPage extends StatefulWidget {
   const GlucoseHistoryPage({super.key});
@@ -12,6 +13,24 @@ class GlucoseHistoryPage extends StatefulWidget {
 
 class _GlucoseHistoryPageState extends State<GlucoseHistoryPage> {
   final store = GlucoseStore();
+List<dynamic> apiData = [];
+
+Future<void> loadGlucose() async {
+  try {
+    final data = await ApiService.getGlucoses();
+
+    setState(() {
+      apiData = data;
+    });
+  } catch (e) {
+    debugPrint(e.toString());
+  }
+}
+@override
+void initState() {
+  super.initState();
+  loadGlucose();
+}
 
   String _statusGlukosa(double nilai) {
     if (nilai < 70) return 'Rendah';
@@ -37,7 +56,7 @@ class _GlucoseHistoryPageState extends State<GlucoseHistoryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final entri = store.semuaEntri;
+    final entri = apiData;
     final data7 = store.data7Hari;
     final rata = store.rataRata;
 

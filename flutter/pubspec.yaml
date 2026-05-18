@@ -50,5 +50,5 @@ flutter:
   
   # Assets
   assets:
-    - .env
+    - assets/env/.env
     - assets/images/logo_foodlog.png
